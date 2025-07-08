@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -125,8 +127,19 @@ func Log(stack, level, pkg, message string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
 		return errors.New("Logging failed status: " + resp.Status)
 	}
 	return nil
+}
+
+func Middleware(stack, level, pkg string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		message := fmt.Sprintf("Request: %s %s", r.Method, r.URL.Path)
+		if err := Log(stack, level, pkg, message); err != nil {
+			log.Fatal("Logging Failed: ", err.Error())
+		}
+		next(w, r)
+	}
 }
